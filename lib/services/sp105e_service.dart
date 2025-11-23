@@ -34,9 +34,12 @@ class SP105EService {
         // Filter for SP105E or LED controller devices
         final name = result.device.platformName.toLowerCase();
         if (name.contains('sp105e') || 
+            name.contains('sp1') ||
             name.contains('led') || 
             name.contains('magic') ||
-            name.isNotEmpty) {
+            name.contains('dream') ||
+            name.contains('rgb') ||
+            name.contains('light')) {
           devices[result.device.remoteId.toString()] = result;
         }
       }
@@ -111,6 +114,16 @@ class SP105EService {
   }
 
   /// Send color to the LED controller
+  /// 
+  /// NOTE: The SP105E protocol implementation is based on common LED controller
+  /// protocols. The exact byte sequence may need adjustment based on your specific
+  /// SP105E firmware version. Common protocol variations include:
+  /// - Some versions use 0x38 as header, others use 0x56
+  /// - Checksum calculation may vary by model
+  /// 
+  /// If colors don't work correctly, you may need to:
+  /// 1. Capture the protocol from the official app using a BLE sniffer
+  /// 2. Adjust the byte sequence in this method accordingly
   Future<bool> sendColor(Color color, {int brightness = 100}) async {
     if (_writeCharacteristic == null) {
       debugPrint('No write characteristic available');
@@ -119,7 +132,6 @@ class SP105EService {
 
     try {
       // SP105E protocol: Send RGB values
-      // The exact protocol may vary, this is a common format
       final red = color.red;
       final green = color.green;
       final blue = color.blue;
@@ -129,19 +141,21 @@ class SP105EService {
       final adjustedGreen = (green * brightness / 100).round();
       final adjustedBlue = (blue * brightness / 100).round();
 
-      // Create command packet (simplified protocol)
-      // Format: [Header, Red, Green, Blue, Checksum]
+      // Create command packet (common LED controller protocol format)
+      // Format: [Header, Red, Green, Blue, White, Mode, Speed, Footer]
       final data = Uint8List.fromList([
-        0x38, // Header byte (common for LED controllers)
+        0x38, // Header byte (common for many LED controllers)
         adjustedRed,
         adjustedGreen,
         adjustedBlue,
-        0x00, // Additional bytes may be needed
-        0x00,
-        0x83, // Footer/checksum
+        0x00, // White channel (not used)
+        0x01, // Mode (static color)
+        0x00, // Speed (not used for static)
+        0x83, // Footer/checksum byte
       ]);
 
-      await _writeCharacteristic!.write(data, withoutResponse: false);
+      // Use withoutResponse: true for better performance during rapid updates
+      await _writeCharacteristic!.write(data, withoutResponse: true);
       debugPrint('Sent color: R=$adjustedRed G=$adjustedGreen B=$adjustedBlue');
       return true;
     } catch (e) {
