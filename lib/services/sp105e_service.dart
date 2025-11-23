@@ -15,6 +15,7 @@ class SP105EService {
   final _connectionStateController = StreamController<bool>.broadcast();
   Stream<bool> get connectionState => _connectionStateController.stream;
   bool get isConnected => _connectedDevice != null;
+  String? get connectedDeviceName => _connectedDevice?.platformName;
 
   // SP105E specific UUIDs (common Bluetooth LE characteristics)
   static const String serviceUuid = '0000ffe0-0000-1000-8000-00805f9b34fb';

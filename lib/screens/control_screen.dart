@@ -231,7 +231,18 @@ class _ControlScreenState extends State<ControlScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('LED Controller'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('LED Controller'),
+            if (_sp105eService.connectedDeviceName != null)
+              Text(
+                _sp105eService.connectedDeviceName!,
+                style: const TextStyle(fontSize: 12),
+              ),
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
