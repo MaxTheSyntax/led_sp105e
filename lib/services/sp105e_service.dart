@@ -20,6 +20,24 @@ class SP105EService {
   // SP105E specific UUIDs (common Bluetooth LE characteristics)
   static const String serviceUuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
   static const String characteristicUuid = '0000ffe1-0000-1000-8000-00805f9b34fb';
+  
+  // Device name patterns for filtering LED controllers
+  static const List<String> _deviceNamePatterns = [
+    'sp105e',
+    'sp1',
+    'led',
+    'magic',
+    'dream',
+    'rgb',
+    'light',
+  ];
+  
+  // SP105E protocol bytes
+  static const int _protocolHeader = 0x38;
+  static const int _whiteChannel = 0x00;
+  static const int _staticMode = 0x01;
+  static const int _speedDefault = 0x00;
+  static const int _protocolFooter = 0x83;
 
   /// Scan for SP105E devices
   Stream<List<ScanResult>> scanForDevices() {
@@ -34,13 +52,7 @@ class SP105EService {
       for (var result in results) {
         // Filter for SP105E or LED controller devices
         final name = result.device.platformName.toLowerCase();
-        if (name.contains('sp105e') || 
-            name.contains('sp1') ||
-            name.contains('led') || 
-            name.contains('magic') ||
-            name.contains('dream') ||
-            name.contains('rgb') ||
-            name.contains('light')) {
+        if (_deviceNamePatterns.any((pattern) => name.contains(pattern))) {
           devices[result.device.remoteId.toString()] = result;
         }
       }
@@ -137,22 +149,23 @@ class SP105EService {
       final green = color.green;
       final blue = color.blue;
       
-      // Apply brightness
-      final adjustedRed = (red * brightness / 100).round();
-      final adjustedGreen = (green * brightness / 100).round();
-      final adjustedBlue = (blue * brightness / 100).round();
+      // Apply brightness (calculate multiplier once)
+      final brightnessMultiplier = brightness / 100.0;
+      final adjustedRed = (red * brightnessMultiplier).round();
+      final adjustedGreen = (green * brightnessMultiplier).round();
+      final adjustedBlue = (blue * brightnessMultiplier).round();
 
       // Create command packet (common LED controller protocol format)
       // Format: [Header, Red, Green, Blue, White, Mode, Speed, Footer]
       final data = Uint8List.fromList([
-        0x38, // Header byte (common for many LED controllers)
+        _protocolHeader,
         adjustedRed,
         adjustedGreen,
         adjustedBlue,
-        0x00, // White channel (not used)
-        0x01, // Mode (static color)
-        0x00, // Speed (not used for static)
-        0x83, // Footer/checksum byte
+        _whiteChannel,
+        _staticMode,
+        _speedDefault,
+        _protocolFooter,
       ]);
 
       // Use withoutResponse: true for better performance during rapid updates
